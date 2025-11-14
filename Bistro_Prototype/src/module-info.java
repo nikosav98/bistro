@@ -1,8 +1,0 @@
-/**
- * 
- */
-/**
- * 
- */
-module Bistro_Prototype {
-}
