@@ -10,13 +10,11 @@ public class LoginResponse {
 	public LoginResponse() {}
 	
 	public LoginResponse(String userID, String role, String employeeID, String subscriberID) {
-		super();
 		this.userID = userID;
 		this.role = role;
 		this.employeeID = employeeID;
 		this.subscriberID = subscriberID;
 	}
-
 	public String getUserID() {
 		return userID;
 	}

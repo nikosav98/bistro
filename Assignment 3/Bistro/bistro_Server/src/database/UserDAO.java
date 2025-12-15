@@ -23,7 +23,7 @@ public class UserDAO {
 	 * @return the user with matching username and password,null if there are no matches.
 	 * @throws SQLException if there is a database error
 	 */
-	public User getUserByUsernameAndPassword(String username, String password) 
+	public User getUserByUsernameAndPassword(String username, String password) throws SQLException
 	{
 
 	    try (Connection conn = DBManager.getConnection();
