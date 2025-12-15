@@ -14,35 +14,41 @@ import java.time.LocalDate;
 public class UserDAO {
 
 	//SELECT statements
-	private final String SELECT_userByUsername = "SELECT * FROM `user` WHERE username = ?";
-	
+	private static final String SELECT_LOGIN ="SELECT userID, role FROM `user` WHERE username=? AND password=?";
+
 	
 	/**
-	 * method to retrieve user from database so the control can check role and existence 
-	 * @param username
-	 * @return User entity
-	 * @throws SQLException
+	 * @param username- username field
+	 * @param password- password field
+	 * @return the user with matching username and password,null if there are no matches.
+	 * @throws SQLException if there is a database error
 	 */
-	public User getUserByUsername(String username) throws SQLException{
-		User user  = null;
-		
-		try(Connection conn = DBManager.getConnection();
-			PreparedStatement ps = conn.prepareStatement(SELECT_userByUsername)){
-			
-			ps.setString(1, username);
-			
-			ResultSet rs = ps.executeQuery();
-			
-			if(rs.next()) {
-				user = new User(
-						rs.getString("userID"),
-						rs.getString("username"),
-						rs.getString("password"),
-						rs.getString("role"));
-			}
-		}catch(Exception e) {
-			System.err.println("Database error Could not find username");			
-		}
-		return user;
+	public User getUserByUsernameAndPassword(String username, String password) 
+	{
+
+	    try (Connection conn = DBManager.getConnection();
+	         PreparedStatement ps = conn.prepareStatement(SELECT_LOGIN)) {
+
+	        ps.setString(1, username);
+	        ps.setString(2, password);
+
+	        ResultSet rs = ps.executeQuery();
+
+	        if (rs.next()) {
+	            return new User(
+	                rs.getString("userID"),
+	                rs.getString("username"),
+	                null,
+	                rs.getString("role")
+	            );
+	        }
+
+	    } catch (SQLException e) {
+	        System.err.println("DB error during login");
+	        e.printStackTrace();
+	    }
+
+	    return null; 
 	}
+
 }
