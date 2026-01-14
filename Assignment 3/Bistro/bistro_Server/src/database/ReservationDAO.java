@@ -38,11 +38,11 @@ public class ReservationDAO {
 	        "SELECT reservationDate, startTime, partySize, confirmationCode " +
 	        "FROM reservation " +
 	        "WHERE userID = ? " +
-	        "AND status IN ('CONFIRMED', 'WAITING') " +
+	        "AND status IN ('NEW','CONFIRMED') " +
 	        "AND reservationDate >= CURDATE() " +
 	        "ORDER BY reservationDate ASC, startTime ASC";
 	
-	private final String SELECT_RESERVATIONS_OVERLAPING_WITH_CLOSE_HOURS="SELECT r.reservationID, r.userID, r.guestContact, r.status, r.reservationDate, r.startTime FROM reservation r "+
+	private final String SELECT_RESERVATIONS_OVERLAPING_WITH_CLOSE_HOURS="SELECT r.reservationID FROM reservation r "+
 																		 "WHERE r.reservationDate = ? "+
 																		 "AND (r.startTime < ? OR ADDTIME(r.startTime, '02:00:00') > ?) "+
 																		 "ORDER BY r.startTime";
@@ -50,10 +50,10 @@ public class ReservationDAO {
             "SELECT guestContact, userID, status, reservationID " +
             "FROM reservation " +
             "WHERE reservationDate = ? " +
-            "  AND allocatedCapacity <= ? " +
-            "  AND status = 'CONFIRMED' " +
-            "  AND (startTime < ? AND ADDTIME(startTime,'02:00:00') > ?) " +
-            "ORDER BY reservationDate DESC, startTime DESC " +
+            "  AND allocatedCapacity = ? " +
+            "  AND status IN ('NEW','CONFIRMED') " +
+            "  AND (? < ADDTIME(startTime, '02:00:00') AND ? > startTime) " +
+            "ORDER BY (status='NEW') DESC, reservationID DESC " +
             "LIMIT ?";
 	private static final String SELECT_OVERBOOKED_SLOTS =
 	        "SELECT slots.reservationDate, slots.startTime AS slotStart, COUNT(r2.reservationID) AS booked " +
@@ -61,36 +61,18 @@ public class ReservationDAO {
 	        "SELECT DISTINCT reservationDate, startTime " +
 	        "FROM reservation " +
 	        "WHERE reservationDate >= CURDATE() " +
-	        "AND allocatedCapacity <= ? " +
-	        "AND status = 'CONFIRMED' " +
+	        "AND allocatedCapacity = ? " +
+	        "AND status IN ('NEW','CONFIRMED') " +
 	        ") slots " +
 	        "JOIN reservation r2 ON r2.reservationDate = slots.reservationDate " +
-	        "AND r2.allocatedCapacity <= ? " +
+	        "AND r2.allocatedCapacity = ? " +
 	        "AND r2.status IN ('NEW','CONFIRMED') " +
 	        "AND (slots.startTime < ADDTIME(r2.startTime, '02:00:00') " +
 	        "AND ADDTIME(slots.startTime, '02:00:00') > r2.startTime) " +
 	        "GROUP BY slots.reservationDate, slots.startTime " +
 	        "HAVING booked > ? " +
 	        "ORDER BY slots.reservationDate ASC, slots.startTime ASC";
-	private static final String SELECT_BEST_CODE_BY_USERID =
-		    "SELECT confirmationCode FROM reservation " +
-		    "WHERE userID = ? AND status IN ('SEATED','CONFIRMED') AND reservationDate >= CURDATE() " +
-		    "ORDER BY " +
-		    "CASE WHEN status='SEATED' AND reservationDate=CURDATE() THEN 0 " +
-		    "     WHEN status='SEATED' THEN 1 ELSE 2 END, " +
-		    "reservationDate ASC, startTime ASC " +
-		    "LIMIT 1";
-
-		private static final String SELECT_BEST_CODE_BY_GUEST =
-		    "SELECT confirmationCode FROM reservation " +
-		    "WHERE guestContact = ? AND status IN ('SEATED','CONFIRMED') AND reservationDate >= CURDATE() " +
-		    "ORDER BY " +
-		    "CASE WHEN status='SEATED' AND reservationDate=CURDATE() THEN 0 " +
-		    "     WHEN status='SEATED' THEN 1 ELSE 2 END, " +
-		    "reservationDate ASC, startTime ASC " +
-		    "LIMIT 1";
-
-
+	private final String SELECT_CODE_BY_CONTACT ="SELECT confirmationCode FROM reservation WHERE guestContact = ?";
 	private static final String SELECT_RESERVATIONS_DUE_FOR_NO_SHOW_PARAM ="SELECT reservationID FROM reservation WHERE reservationDate = ? AND status IN ('NEW','CONFIRMED') AND startTime <= ?";
 	private static final String SELECT_reservationByConfirmationCode = "SELECT * FROM `reservation` WHERE confirmationCode = ?";
 	private static final String SELECT_reservationByReservationId = "SELECT * FROM `reservation` WHERE reservationID = ?";
@@ -116,10 +98,11 @@ public class ReservationDAO {
 	        "FROM reservation r " +
 	        "WHERE r.reservationDate >= ? AND r.reservationDate < ? " +
 	        "AND NOT EXISTS ( " +
-	        "SELECT 1 FROM seating s " +
-	        "WHERE s.reservationID = r.reservationID " +
-	        "AND s.checkInTime IS NOT NULL " +
-	        "AND ABS(TIMESTAMPDIFF(MINUTE, r.timeOfCreation, s.checkInTime)) <= 60) "+
+	        "   SELECT 1 FROM seating s " +
+	        "   WHERE s.reservationID = r.reservationID " +
+	        "     AND s.checkInTime IS NOT NULL " +
+	        "     AND ABS(TIMESTAMPDIFF(MINUTE, r.timeOfCreation, s.checkInTime)) <= 60 " +
+	        ") " +
 	        "GROUP BY DAY(r.reservationDate)";
 
 
@@ -581,8 +564,8 @@ public class ReservationDAO {
         try (PreparedStatement ps = conn.prepareStatement(SELECT_OVERLAPPING_RESERVATIONS_TO_CANCEL)){
         	ps.setDate(1, Date.valueOf(date));
             ps.setInt(2, allocatedCapacity);
-            ps.setTime(3, Time.valueOf(timeEnd));   // interval end
-            ps.setTime(4, Time.valueOf(timeStart)); // interval start
+            ps.setTime(3, Time.valueOf(timeStart));
+            ps.setTime(4, Time.valueOf(timeEnd));
             ps.setInt(5, limit);
             
             ResultSet rs = ps.executeQuery();
@@ -707,27 +690,15 @@ public class ReservationDAO {
 
 
 	
-	public int fetchBestConfirmationCodeByUserId(Connection conn, String userId) throws SQLException {
-	    if (userId == null || userId.isBlank()) return -1;
-	    try (PreparedStatement ps = conn.prepareStatement(SELECT_BEST_CODE_BY_USERID)) {
-	        ps.setString(1, userId.trim());
-	        try (ResultSet rs = ps.executeQuery()) {
-	            return rs.next() ? rs.getInt(1) : -1;
-	        }
-	    }
+	public int fetchConfirmationCodeByGuestContact(Connection conn,String contact)throws SQLException{
+		try(PreparedStatement ps = conn.prepareStatement(SELECT_CODE_BY_CONTACT)){
+			ps.setString(1, contact);
+			ResultSet rs = ps.executeQuery();
+			if(rs.next()) return rs.getInt("confirmationCode");
+			return -1;
+		}
 	}
-
-	public int fetchBestConfirmationCodeByGuestContact(Connection conn, String contact) throws SQLException {
-	    if (contact == null || contact.isBlank()) return -1;
-	    try (PreparedStatement ps = conn.prepareStatement(SELECT_BEST_CODE_BY_GUEST)) {
-	        ps.setString(1, contact.trim());
-	        try (ResultSet rs = ps.executeQuery()) {
-	            return rs.next() ? rs.getInt(1) : -1;
-	        }
-	    }
 	}
-
-}
 	
 	
 		

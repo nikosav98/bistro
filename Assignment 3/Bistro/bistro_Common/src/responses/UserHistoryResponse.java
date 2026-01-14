@@ -12,12 +12,7 @@ public class UserHistoryResponse {
 	private int tableNumber;
 	private Double totalPrice;
 	private int partySize;
-	private String status;
 	
-	public String getStatus() {
-		return status;
-	}
-
 	private int confirmationCode;
 	
 	public UserHistoryResponse() {}
@@ -27,18 +22,6 @@ public class UserHistoryResponse {
 		this.partySize = partySize;
 		this.checkInTime = startTime;
 		this.confirmationCode=confirmationCode;
-	}
-	
-	public UserHistoryResponse(LocalDate reservationDate, LocalTime reservedForTime, LocalTime checkInTime,
-			LocalTime checkOutTime, int tableNumber, Double totalPrice, int partySize, String status) {
-		this.reservationDate = reservationDate;
-		this.reservedForTime = reservedForTime;
-		this.checkInTime = checkInTime;
-		this.checkOutTime = checkOutTime;
-		this.tableNumber = tableNumber;
-		this.totalPrice = totalPrice;
-		this.partySize = partySize;
-		this.status = status;
 	}
 	
 	public UserHistoryResponse(LocalDate reservationDate, LocalTime reservedForTime, LocalTime checkInTime,

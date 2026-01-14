@@ -28,6 +28,7 @@ public class SeatingDAO {
             "UPDATE seating " +
             "SET checkInTime = NOW() " +
             "WHERE seatingID = ? AND checkOutTime IS NULL AND checkInTime IS NULL";
+    
     //SELECT
     private static final String SELECT_TABLE_ID_BY_SEATING_ID ="SELECT tableID FROM seating WHERE seatingID = ?";        
     private static final String SELECT_VISIT_TIMES_BETWEEN ="SELECT checkInTime, checkOutTime " +"FROM seating " +"WHERE checkInTime >= ? " +
@@ -42,7 +43,7 @@ public class SeatingDAO {
     											  "LEFT JOIN user u ON u.userID = r.userID "+
     											  "WHERE s.checkOutTime IS NULL "+
     											  "ORDER BY t.tableNumber ASC";
-    
+    private final String SELECT_WHERE_CHECKIN_NULL= "SELECT checkInTime FROM seating WHERE seatingID = ?";
     
     private final String SELECT_OPEN_SEATING_TO_UPDATE = "SELECT seatingID, reservationID "+
     													 "FROM seating "+
@@ -69,7 +70,15 @@ public class SeatingDAO {
             }
         }
     }
-
+    public boolean isCheckInNull(Connection conn, int seatingId) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(SELECT_WHERE_CHECKIN_NULL)) {
+            ps.setInt(1, seatingId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return false;
+                return rs.getTimestamp(1) == null;
+            }
+        }
+    }
     public boolean claimAutoBillSend(Connection conn, int seatingId) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(CLAIM_AUTO_BILL_SEND)) {
             ps.setInt(1, seatingId);
@@ -83,6 +92,7 @@ public class SeatingDAO {
             return ps.executeUpdate() == 1;
         }
     }
+    
     public Integer getReservationIdBySeatingId(Connection conn, int seatingId) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(SELECT_RESERVATION_ID_BY_SEATING_ID)) {
             ps.setInt(1, seatingId);

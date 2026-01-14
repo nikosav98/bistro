@@ -99,12 +99,4 @@ public class MainScreenController extends Application {
             a.showAndWait();
         });
     }
-    
-    @FXML
-    private void onExitClicked() {
-        if (controller != null) {
-            controller.closeConnectionForExit();
-        }
-        Platform.exit();
-    }
 }

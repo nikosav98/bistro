@@ -378,16 +378,6 @@ public class ReservationsViewController implements ClientControllerAware {
         if (infoLabel != null) infoLabel.setText(msg == null ? "" : msg);
     }
     
-    public void clearReservationIdentity() {
-        if (!overrideIdentity) {
-            return;
-        }
-        this.overrideUserId = null;
-        this.overrideGuestContact = null;
-        this.overrideIdentity = false;
-        refreshIdentityFromController();
-        setInfo("Pick party size + date, then choose a time block.");
-    }
     
     
 }

@@ -199,9 +199,7 @@ public class HistoryViewController implements ClientControllerAware {
 
     private String inferStatus(UserHistoryResponse r) {
         if (r == null) return "-";
-        String status = r.getStatus();
-        if (status != null && status.equalsIgnoreCase("CANCELLED")) return "Cancelled";
-        if (r.getCheckInTime() == null && r.getCheckOutTime() == null) return "No Show";
+        if (r.getCheckInTime() == null && r.getCheckOutTime() == null) return "Reserved";
         if (r.getCheckInTime() != null && r.getCheckOutTime() == null) return "Seated";
         if (r.getCheckInTime() != null && r.getCheckOutTime() != null) return "Completed";
         return "-";

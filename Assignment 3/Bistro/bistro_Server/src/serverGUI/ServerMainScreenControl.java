@@ -76,7 +76,6 @@ public class ServerMainScreenControl {
 	                row.setUsername(username);
 	                row.setUserId(userID);             
 	                row.setRole(role);
-	                clientTable.refresh(); 
 	                return;
 	            }
 	        }
@@ -86,7 +85,6 @@ public class ServerMainScreenControl {
 	        row.setUsername(username);
 	        row.setRole(role);
 	        clients.add(row);
-	        clientTable.refresh(); 
 	    });
 	}
 	
@@ -148,20 +146,6 @@ public class ServerMainScreenControl {
         stage.close();
         Platform.exit();
         System.exit(0);
-	}
-	
-	public void onClientLogout(String ip) {
-		Platform.runLater(() -> {
-			for (ClientTableRow row : clients) {
-				if (row.getIp().equals(ip)) {
-					row.setUsername("-");
-					row.setUserId("-");
-					row.setRole("-");
-					break;
-				}
-			}
-			clientTable.refresh();
-		});
 	}
 	
 }
