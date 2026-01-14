@@ -27,10 +27,10 @@ public class UserDAO {
 		private final String SELECT_ALL_SUBSCRIBER = "SELECT * FROM `user` WHERE role = 'SUBSCRIBER'";
 		private static final String SELECT_LOGIN ="SELECT userID, username, role, phone, email FROM `user` WHERE username= ? AND password= ?";
 		private static final String SELECT_USER_BY_ID ="SELECT userID, username, role, phone, email FROM `user` WHERE userID = ?";
-		private static final String SELECT_HISTORY ="SELECT r.reservationDate, r.startTime, r.partySize, r.status, s.checkInTime, s.checkOutTime, t.tableNumber, b.totalPrice "+
+		private static final String SELECT_HISTORY ="SELECT r.reservationDate, r.startTime, r.partySize, s.checkInTime, s.checkOutTime, t.tableNumber, b.totalPrice "+
 													"FROM reservation r " +
-													"LEFT JOIN seating s ON s.reservationID = r.reservationID "+
-													"LEFT JOIN restaurant_table t ON t.tableID = s.tableID "+
+													"JOIN seating s ON s.reservationID = r.reservationID "+
+													"JOIN restaurant_table t ON t.tableID = s.tableID "+
 													"LEFT JOIN bill b ON b.seatingID = s.seatingID "+
 													"WHERE r.userID = ? "+
 													"ORDER BY r.reservationDate DESC, r.startTime";
@@ -172,9 +172,8 @@ public class UserDAO {
 		                Double totalPrice = rs.getObject("totalPrice") == null ? null : rs.getDouble("totalPrice");
 		                
 		                int partySize = rs.getInt("partySize");
-		                String status = rs.getString("status");
 		                
-		                historyList.add(new UserHistoryResponse(resDate,reservedFor,checkIn,checkOut,tableNumber,totalPrice,partySize,status));
+		                historyList.add(new UserHistoryResponse(resDate,reservedFor,checkIn,checkOut,tableNumber,totalPrice,partySize));
 		                
 		    		}
 		    	}

@@ -13,8 +13,7 @@ public class WaitingList {
 	private LocalDateTime assignedAt; //or cancelled at
 	
 	
-	public WaitingList(int waitID, int reservationID, String status, int priority, LocalDateTime createdAt,
-			LocalDateTime assignedAt) {
+	public WaitingList(int waitID, int reservationID, String status, int priority, LocalDateTime createdAt,LocalDateTime assignedAt) {
 		this.waitID = waitID;
 		this.reservationID = reservationID;
 		this.status = status;

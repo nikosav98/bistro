@@ -26,12 +26,6 @@ public class LoginRequest {
 	public LoginRequest() {
 		
 	}
-	public LoginRequest(String username, String phone, String email, UserCommand userCommand) {
-		this.username = username;
-		this.phone = phone;
-		this.email = email;
-		this.userCommand = userCommand;
-	}
 	
 	public LoginRequest(String phone,String email) {
 		this.phone = phone;

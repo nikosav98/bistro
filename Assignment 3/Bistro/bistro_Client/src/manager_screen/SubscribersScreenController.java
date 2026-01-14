@@ -245,8 +245,6 @@ public class SubscribersScreenController implements ClientControllerAware {
 
     private String inferStatus(UserHistoryResponse response) {
         if (response == null) return "-";
-        String status = response.getStatus();
-        if (status != null && status.equalsIgnoreCase("CANCELLED")) return "Cancelled";
         if (response.getCheckInTime() == null && response.getCheckOutTime() == null) return "Reserved";
         if (response.getCheckInTime() != null && response.getCheckOutTime() == null) return "Seated";
         if (response.getCheckInTime() != null && response.getCheckOutTime() != null) return "Completed";

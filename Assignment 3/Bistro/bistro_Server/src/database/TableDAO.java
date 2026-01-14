@@ -19,7 +19,10 @@ public class TableDAO {
 	private static final String SELECT_CAPACITY_BY_TABLE_NUMBER ="SELECT capacity FROM restaurant_table WHERE tableNumber = ? AND isActive = 1";
 	private static final String SELECT_IS_TABLE_OCCUPIED_NOW_BY_NUMBER ="SELECT 1 " +"FROM seating s JOIN restaurant_table t ON t.tableID = s.tableID " +
 																		"WHERE t.tableNumber = ? AND s.checkOutTime IS NULL LIMIT 1";  
-	private static final String SELECT_ACTIVE_COUNT_BY_CAPACITY ="SELECT COUNT(*) FROM restaurant_table WHERE isActive = 1 AND capacity = ?";	   	                         																	                     
+	private static final String SELECT_ACTIVE_COUNT_BY_CAPACITY ="SELECT COUNT(*) FROM restaurant_table WHERE isActive = 1 AND capacity = ?";
+	   
+	                         																	          
+            
 	private final String SELECT_ALL_TABLES ="SELECT * FROM `restaurant_table` WHERE isActive = 1";
 	private final String SELECT_TABLE_BY_ID = "SELECT * FROM `restaurant_table` WHERE tableID = ? AND isActive = 1";
 	private final String SELECT_minimalTableSize = "SELECT MIN(capacity) as roundedUp FROM `restaurant_table` WHERE isActive = 1 AND capacity >= ?";

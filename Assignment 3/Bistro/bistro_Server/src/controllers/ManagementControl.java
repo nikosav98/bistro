@@ -220,14 +220,7 @@ public class ManagementControl {
 		}
 	}
 	
-	
-	/**
-	 * method to set disable a table (delete)
-	 * @param tableNumber the number of the table to disable
-	 * @return the list of contacts that were affected (cancelled reservation)
-	 */
 	public Response<ManagerResponse> deactivateTableByNumber(int tableNumber) {
-		System.out.println("[DEACTIVATE] start table=" + tableNumber);
 		Connection conn = null;
 
 	    // collect victims in-memory
@@ -238,29 +231,22 @@ public class ManagementControl {
 	    try {
 	        conn = DBManager.getConnection();
 	        conn.setAutoCommit(false);
-	        System.out.println("[DEACTIVATE] conn works");
+
 	        Integer cap = validateTableCanBeDeactivated(conn, tableNumber);
 	        if (cap == null) safeRollback(conn, "Table not found (or already inactive)");
-	        System.out.println("[DEACTIVATE] cap=" + cap);
 	        		            
 	        int newTotal = computeNewTotalAfterDeactivation(conn, cap, tableNumber);
 	        if (newTotal == -1) safeRollback(conn, "Cannot deactivate the last active table of capacity " + cap);
-	        System.out.println("[DEACTIVATE] newTotal=" + newTotal);
-	        
-	        System.out.println("[DEACTIVATE] calling cancelVictims...");   
+	           
 	        cancelVictimsForOverbookedSlots(conn, cap, newTotal, cancelledReservation, victimContacts);
-	        
-	        System.out.println("[DEACTIVATE] deactivating table...");
+
 	        if (!deactivateTable(conn, tableNumber)) safeRollback(conn, "Failed to deactivate table");
 	            
 
 	        conn.commit();
 
 	    } catch (Exception e) {
-	    	System.out.println("[DEACTIVATE] FAILED HERE: " + e);
-	        e.printStackTrace();
-	        safeRollback(conn, "DB error: " + e.getMessage());
-	        return new Response<>(false, "Deactivate failed: " + e.getMessage(), null);	        
+	        safeRollback(conn,"DB error: " + e.getMessage());	        
 	    } finally {closeQuietly(conn);}
 	        
 	    
@@ -322,12 +308,6 @@ public class ManagementControl {
 	        List<String> victimContactsOut) throws SQLException {
 	        	        	        	        	
 	    List<ReservationDAO.SlotOverbook> overbooked =reservationDAO.findOverbookedSlots(conn, cap, newTotal);
-	    var slots = reservationDAO.findOverbookedSlots(conn, cap, newTotal);
-	    System.out.println("cap=" + cap + " newTotal=" + newTotal + " overbookedSlots=" + slots.size());
-	    for (var s : slots) {
-	        System.out.println(s.getDate() + " " + s.getSlotStart() + " booked=" + s.getBooked());
-	    }
-
 	            
 	    for (ReservationDAO.SlotOverbook slot : overbooked) {
 	        int toCancel = slot.getBooked() - newTotal;
@@ -379,71 +359,64 @@ public class ManagementControl {
 	}
 
 	
-	/**
-	 * method to edit the time the restuarant opens and closes and why
-	 * @param req the times and occasion
-	 * @return list of contacts that were affected by the edit (cancelled reservation)
-	 */
-	public Response<ManagerResponse> editOpenHours(ManagerRequest req) {
-
-	    Connection conn = null;
-	    List<Reservation> reservationsToCancel = new ArrayList<>();
-	    List<String> victimsContact = new ArrayList<>();
-	    boolean committed = false;
-
-	    try {
-	        conn = DBManager.getConnection();
-	        conn.setAutoCommit(false);
-
-	        reservationsToCancel = reservationDAO.pickReservationToCancelDueToOpenHours(conn, req.getNewDate(), req.getNewOpenTime(), req.getNewCloseTime());
-	        System.out.println("[EDIT HOURS] conflicts=" + (reservationsToCancel == null ? "null" : reservationsToCancel.size()));
-
-	        if (reservationsToCancel == null) reservationsToCancel = List.of(); // treat as empty
-
-	        for (Reservation r : reservationsToCancel) {
-
-	            if (isWaiting(r.getStatus())) {
-	                boolean wL = waitingListDAO.updateWaitingStatus(conn, r.getReservationID(), "CANCELLED");
-	                if (!wL) throw new SQLException("Failed to cancel waiting-list record");
-	            }
-
-	            if (isSeated(r.getStatus())) {
-	                Integer seatingId = seatingDAO.getSeatingIdByReservationId(conn, r.getReservationID());
-	                if (seatingId == null) throw new SQLException("Missing seating id for reservationId=" + r.getReservationID());
-
-	                boolean billSent = billingControl.sendBillAutomatically(conn, seatingId);
-	                if (!billSent) throw new SQLException("Failed to send bill for seatingId=" + seatingId);
-	            }
-
-	            if (!"CANCELLED".equals(r.getStatus())) {
-	                boolean statusUpdate = reservationDAO.updateStatusByReservationID(conn, r.getReservationID(), "CANCELLED");
-	                if (!statusUpdate) throw new SQLException("Failed to cancel reservationId=" + r.getReservationID());
-	            }
-	        }
-
-	        boolean updated = openingHoursDAO.updateOpeningHours(conn, req.getNewOpenTime(), req.getNewCloseTime(), req.getNewDate(), req.getOccasion());
-	        if (!updated) throw new SQLException("Failed to update opening hours (0 rows updated?)");
-
-	        collectVictimContacts(conn, reservationsToCancel, victimsContact);
-
-	        conn.commit();
-	        committed = true;
-
-	    } catch (Exception e) {
-	        safeRollback(conn, "Edit open hours failed: " + e.getMessage());
-	        return new Response<>(false, "Edit open hours failed: " + e.getMessage(), null);
-	    } finally {
-	        closeQuietly(conn);
-	    }
-
-	    // notify ONLY if commit succeeded
-	    if (committed && !victimsContact.isEmpty()) notifyVictims(victimsContact);
-	        
-	    
-
-	    ManagerResponse mr = new ManagerResponse(ManagerResponseCommand.EDIT_HOURS_RESPONSE, victimsContact);
-	    return new Response<>(true, "Opening hours updated" +
-	            (victimsContact.isEmpty() ? "" : " and conflicting reservations were cancelled"), mr);
+	
+	public Response<ManagerResponse> editOpenHours(ManagerRequest req){
+		
+		Connection conn =null;
+		
+		List<Reservation> reservationsToCancel = new ArrayList<>();
+		List<String> victimsContact = new ArrayList<>();
+		
+		try{
+			conn=DBManager.getConnection();
+			conn.setAutoCommit(false);
+			
+			reservationsToCancel = reservationDAO.pickReservationToCancelDueToOpenHours(conn, req.getNewDate(), req.getNewOpenTime(), req.getNewCloseTime());
+			if(reservationsToCancel == null) safeRollback(conn, "No reservation to cancel");
+				
+			
+			for(Reservation r : reservationsToCancel) {
+								
+				
+				if(isWaiting(r.getStatus())) {
+					boolean  wL = waitingListDAO.updateWaitingStatus(conn, r.getReservationID(), "CANCELLED");
+					if(!wL) safeRollback(conn, "No waiting list to cancel");
+				}
+				
+				if(isSeated(r.getStatus())) {
+					
+					Integer seatingId = seatingDAO.getSeatingIdByReservationId(conn, r.getReservationID());
+					if(seatingId == null) safeRollback(conn, "cant find seating id");
+					
+					boolean billSent = billingControl.sendBillAutomatically(conn, seatingId);
+					if(!billSent) safeRollback(conn, "failed to sent bill");					
+										
+				}
+				
+				if(!r.getStatus().equals("CANCELLED")) {
+					boolean statusUpdate = reservationDAO.updateStatusByReservationID(conn, r.getReservationID(), "CANCELLED");
+					if(!statusUpdate) safeRollback(conn, "failed to update reservation status");
+				}
+			
+				
+			}
+			
+			boolean updated = openingHoursDAO.updateOpeningHours(conn, req.getNewOpenTime(), req.getNewCloseTime(), req.getNewDate(), req.getOccasion());
+			if(!updated) safeRollback(conn, "failed to update hours");
+			
+			collectVictimContacts(conn, reservationsToCancel, victimsContact);
+			conn.commit();
+			
+		}catch(Exception e) {
+			safeRollback(conn,"DB error: " + e.getMessage());
+	       
+		}finally {
+			closeQuietly(conn);
+		}
+		notifyVictims(victimsContact);
+		ManagerResponse mr = new ManagerResponse(ManagerResponseCommand.EDIT_HOURS_RESPONSE,victimsContact);
+		return new Response<>(true,"All the guests the were cancelled",mr);
+		
 	}
 	
 	
@@ -575,9 +548,6 @@ public class ManagementControl {
 	        if (conn != null) conn.rollback();
 	        return new Response<>(false, msg, null);
 	    } catch (Exception e) {
-	    	System.out.println("[DEACTIVATE] EXCEPTION: " + e);
-	        e.printStackTrace();
-	        safeRollback(conn, "DB error: " + e.getMessage());
 	        return new Response<>(false, msg + " (rollback failed: " + e.getMessage() + ")", null);
 	    }
 	}

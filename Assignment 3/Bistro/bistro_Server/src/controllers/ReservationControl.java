@@ -3,7 +3,6 @@ package controllers;
 import database.*;
 import entities.OpeningHours;
 import entities.Reservation;
-import entities.WaitingList;
 import requests.ReservationRequest;
 import responses.ReservationResponse;
 import responses.ReservationResponse.ReservationResponseType;
@@ -38,21 +37,19 @@ public class ReservationControl {
     private final OpeningHoursDAO openingHoursDAO;
     private final UserDAO userDAO; 
     private final NotificationControl notificationControl;
-    private final WaitingListDAO waitingListDAO;
 
     public ReservationControl() {
         this(new ReservationDAO(), new TableDAO(), new OpeningHoursDAO(),
-                new UserDAO(), new NotificationControl(),new WaitingListDAO());
+                new UserDAO(), new NotificationControl());
     }
 
     public ReservationControl(ReservationDAO reservationDAO, TableDAO tableDAO,OpeningHoursDAO openingHoursDAO,
-                             UserDAO userDAO,  NotificationControl notificationControl,WaitingListDAO waitingListDAO) {                                                                                      
+                             UserDAO userDAO,  NotificationControl notificationControl) {                                                                                      
         this.reservationDAO = reservationDAO;
         this.tableDAO = tableDAO;
         this.openingHoursDAO = openingHoursDAO;
         this.userDAO = userDAO;
         this.notificationControl = notificationControl;
-        this.waitingListDAO=waitingListDAO;
     }
 
     public Response<ReservationResponse> handleReservationRequest(ReservationRequest req) {
@@ -330,15 +327,6 @@ public class ReservationControl {
                     conn.rollback();
                     return new Response<>(false, "Failed to cancel reservation", null);
                 }
-                
-                WaitingList wl = waitingListDAO.getWaitingListByReservationId(conn, reservation.getReservationID());
-                if(wl != null) {
-                	boolean updated = waitingListDAO.updateWaitingStatus(conn, reservation.getReservationID(),"CANCELLED");
-                	if(!updated) {
-                		conn.rollback();
-                		return new Response<>(false, "Failed to cancel waiting list", null);
-                	}
-                }
 
                 conn.commit();
 
@@ -526,30 +514,19 @@ public class ReservationControl {
     }
     
     
-    public Response<Integer> retrieveConfirmationCode(String keyRaw) {
-        try (Connection conn = DBManager.getConnection()) {
-            String key = keyRaw == null ? null : keyRaw.trim();
-            if (key == null || key.isEmpty()) return new Response<>(false, "Missing input", null);
-
-            int code;
-            if (key.matches("U-\\d{5}")) {
-                code = reservationDAO.fetchBestConfirmationCodeByUserId(conn, key);
-                if (code <= 0) return new Response<>(false, "No relevant reservation found", null);
-                sendConfirmationNotification(key, null, code);
-            } else {
-                code = reservationDAO.fetchBestConfirmationCodeByGuestContact(conn, key);
-                if (code <= 0) return new Response<>(false, "No relevant reservation found", null);
-                sendConfirmationNotification(null, key, code);
-            }
-
-            return new Response<>(true, "Here is your code", code);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return new Response<>(false, "Failed to fetch code", null);
-        }
+    public Response<Integer> retrieveConfirmationCode(String contact) {
+    	try(Connection conn = DBManager.getConnection()){
+    		int code= reservationDAO.fetchConfirmationCodeByGuestContact(conn, contact);
+    		if(code==-1) {
+    			List<UserHistoryResponse> upcoming = reservationDAO.fetchUpcomingReservationsByUser(conn, contact);
+    			if(upcoming !=null)code = upcoming.get(0).getConfirmationCode();
+    		}
+    		sendConfirmationNotification(null, contact, code);
+    		return new Response<>(true,"here is your code",code);
+    	}catch(Exception e) {
+    		return new Response<>(false, "Failed to fetch code by contact", null);
+    	}
     }
-    
-    
     
     /**
      * helper method to round up time for searching available times when doing a reservation

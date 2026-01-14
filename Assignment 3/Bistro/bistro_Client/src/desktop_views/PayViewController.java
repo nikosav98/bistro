@@ -84,11 +84,7 @@ public class PayViewController implements ClientControllerAware {
         setStatus("Fetching bill total...", false);
 
         // we keep REQUEST_TO_SEE_BILL for now, later it can return full bill items
-        clientController.requestBillAction(
-                BillRequestType.REQUEST_TO_SEE_BILL,
-                code,
-                isCash
-        );
+        clientController.requestBillAction(BillRequestType.REQUEST_TO_SEE_BILL,code,isCash);
     }
 
     @FXML

@@ -15,20 +15,10 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
-import javafx.scene.layout.GridPane;
 import responses.ManagerResponse;
 import responses.ReservationResponse;
 import responses.SeatingResponse;
 import requests.ReservationRequest.ReservationRequestType;
-import javafx.event.ActionEvent;
-import javafx.geometry.Insets;
-import javafx.scene.Node;
-import javafx.scene.control.ButtonBar;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.Dialog;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.Dialog;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -183,16 +173,6 @@ public class SubscriberMainScreenController implements ClientControllerAware, Cl
             onLogout.run();
         }
     }
-    
-    @FXML
-    private void onAccount() {
-        if (clientController == null || !connected) {
-            setInfo("Not connected to server.");
-            return;
-        }
-        setInfo("Loading account details...");
-        clientController.requestUserDetails();
-    }
 
     private void requestUpcomingReservations() {
         if (!connected || clientController == null) {
@@ -280,11 +260,6 @@ public class SubscriberMainScreenController implements ClientControllerAware, Cl
             handleReservationResponse(response);
         }
     }
-    
-    @Override
-    public void onUserDetailsResponse(String email, String phone) {
-        showAccountDialog(email, phone);
-    }
 
     @Override
     public void onSeatingResponse(SeatingResponse response) {
@@ -359,54 +334,6 @@ public class SubscriberMainScreenController implements ClientControllerAware, Cl
         } else {
             setInfo("Edit screen unavailable.");
         }
-    }
-    
-    private void showAccountDialog(String email, String phone) {
-        Dialog<Void> dialog = new Dialog<>();
-        dialog.setTitle("Subscriber Account");
-
-        ButtonType editType = new ButtonType("Edit", ButtonBar.ButtonData.LEFT);
-        ButtonType saveType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(editType, saveType, ButtonType.CLOSE);
-
-        TextField emailField = new TextField(email == null ? "" : email);
-        TextField phoneField = new TextField(phone == null ? "" : phone);
-        emailField.setDisable(true);
-        phoneField.setDisable(true);
-
-        GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(12);
-        grid.setPadding(new Insets(10));
-        grid.add(new Label("Email"), 0, 0);
-        grid.add(emailField, 1, 0);
-        grid.add(new Label("Phone"), 0, 1);
-        grid.add(phoneField, 1, 1);
-
-        Node editButton = dialog.getDialogPane().lookupButton(editType);
-        Node saveButton = dialog.getDialogPane().lookupButton(saveType);
-        saveButton.setDisable(true);
-
-        editButton.addEventFilter(ActionEvent.ACTION, event -> {
-            event.consume();
-            emailField.setDisable(false);
-            phoneField.setDisable(false);
-            saveButton.setDisable(false);
-            emailField.requestFocus();
-        });
-
-        saveButton.addEventFilter(ActionEvent.ACTION, event -> {
-            event.consume();
-            if (clientController == null || !connected) {
-                setInfo("Not connected to server.");
-                return;
-            }
-            clientController.requestEditDetails(emailField.getText(), phoneField.getText());
-            dialog.close();
-        });
-
-        dialog.getDialogPane().setContent(grid);
-        dialog.showAndWait();
     }
 
     private void handleCancelReservation(ReservationResponse row) {

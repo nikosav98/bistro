@@ -34,7 +34,6 @@ public class BistroEchoServer extends AbstractServer {
 	private ServerSession serverSession;
 	private final Map<ConnectionToClient,ClientSession> loggedUsers = new ConcurrentHashMap<>();
 	private final ServerMainScreenControl serverGUI;
-	private volatile ConnectionToClient activeManager;
 	
 	//controllers
 	private final UserControl userControl;
@@ -121,9 +120,6 @@ public class BistroEchoServer extends AbstractServer {
 			System.out.println("Client disconnected: " + clientSession.getIp());
 			serverGUI.onClientDisconnected(clientSession.getIp());
 		}
-		if (client == activeManager) {
-			activeManager = null;
-		}
 	}
 	
 	@Override
@@ -167,7 +163,8 @@ public class BistroEchoServer extends AbstractServer {
 	                case USER_REQUEST -> {
 	                	LoginRequest loginReq = (LoginRequest) request.getData();
 	                    Response<LoginResponse> loginResp = userControl.handleUserRequest(loginReq);
-	                    response = handleLoginWithManagerGate(client, loginReq, loginResp);
+	                    response = loginResp;
+	                    handleLoginSuccess(client, loginReq, loginResp);
 	                    if (loginReq != null && loginReq.getUserCommand() == LoginRequest.UserCommand.LOGIN_REQUEST) {
 	                        if (session == null) {
 	                            System.out.println("session=null");
@@ -195,7 +192,8 @@ public class BistroEchoServer extends AbstractServer {
 	                			}
 	                		}
 	                	}
-	                    Response<ReservationResponse> reservationResp = reservationControl.handleReservationRequest(reservationReq);	                           
+	                    Response<ReservationResponse> reservationResp =
+	                            reservationControl.handleReservationRequest(reservationReq);
 	                    response = reservationResp;
 	                }
 	                case SEATING_REQUEST ->{
@@ -204,8 +202,7 @@ public class BistroEchoServer extends AbstractServer {
 	                	response = seatingResp;
 	                }
 	                case MANAGER_REQUEST ->{
-	                	String role = loggedUsers.get(client) == null ? null : loggedUsers.get(client).getRole();
-	                	if(!"REPRESENTATIVE".equals(role) && !"MANAGER".equals(role)){
+	                	if(!loggedUsers.get(client).getRole().equals("REPRESENTATIVE") && !loggedUsers.get(client).getRole().equals("MANAGER") ) {
 	                		response = new Response<>(false,"No premissions",null);
 	                		break;
 	                	}
@@ -219,8 +216,7 @@ public class BistroEchoServer extends AbstractServer {
 	                	response = billResp;
 	                }
 	                case REPORT_REQUEST->{
-	                	String role = loggedUsers.get(client) == null ? null : loggedUsers.get(client).getRole();
-	                	if(!"MANAGER".equals(role)){
+	                	if(!loggedUsers.get(client).getRole().equals("MANAGER") ) {
 	                		response = new Response<>(false,"No premissions",null);
 	                		break;
 	                	}
@@ -237,17 +233,6 @@ public class BistroEchoServer extends AbstractServer {
 	                case LOST_CODE-> {
 	                	String contact = (String)request.getData();
 	                	response = reservationControl.retrieveConfirmationCode(contact);
-	                }
-	                case LOGOUT_REQUEST->{
-	                	ClientSession clientSession = loggedUsers.get(client);
-	                	if (clientSession != null) {
-	                		String clientIp = clientSession.getIp();
-	                		clientSession.setRole(null);
-	                		clientSession.setUserId(null);
-	                		clientSession.setUsername(null);
-	                		serverGUI.onClientLogout(clientIp);
-	                	}
-	                	response = new Response<>(true,"Logged out successfully",null);
 	                }
 	                	                
 	                default -> response = new Response<>(false, "Unknown command", null);
@@ -290,34 +275,6 @@ public class BistroEchoServer extends AbstractServer {
 		        + " userId=" + logRes.getData().getUserID()
 		        + " username=" + logRes.getData().getUsername());
 	}
-	
-	private Response<LoginResponse> handleLoginWithManagerGate(ConnectionToClient client,LoginRequest loginReq,Response<LoginResponse> loginResp) {
-		
-		if (loginReq == null || loginReq.getUserCommand() != LoginRequest.UserCommand.LOGIN_REQUEST) {
-	        return loginResp;
-	    }
-
-		if (loginResp == null || !loginResp.isSuccess() || loginResp.getData() == null) {
-	        return loginResp;
-	    }
-		
-		if (loginResp.getData().getResponseCommand() != LoginResponse.UserReponseCommand.LOGIN_RESPONSE) {
-	        return loginResp;
-	    }
-
-		boolean isManager = "MANAGER".equalsIgnoreCase(loginResp.getData().getRole());
-		if (isManager) {
-	        if (activeManager != null && activeManager != client) {
-	            return new Response<>(false, "Another manager is already logged in.", null);
-	        }
-	        activeManager = client;
-	    }
-		
-		 handleLoginSuccess(client, loginReq, loginResp);
-		    return loginResp;
-	}
-	
-	
 	
 	
 }

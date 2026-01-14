@@ -13,7 +13,6 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.ComboBoxTableCell;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.util.StringConverter;
 
 import requests.ManagerRequest;
 import requests.ManagerRequest.ManagerCommand;
@@ -31,22 +30,7 @@ public class UpdateOpeningHoursScreenController implements ClientControllerAware
 	
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
-   
-    private static final List<String> OCCASIONS = List.of("REGULAR", "HOLIDAY", "WAR", "STRIKE");
-    private static final StringConverter<String> OCCASION_CONVERTER = new StringConverter<>() {
-        @Override
-        public String toString(String value) {
-            if (value == null || value.isBlank()) return "";
-            String lower = value.toLowerCase();
-            return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
-        }
-
-        @Override
-        public String fromString(String value) {
-            if (value == null) return null;
-            return value.trim().toUpperCase();
-        }
-    };
+    private static final List<String> OCCASIONS = List.of("Regular", "Holiday", "War", "Strike");
    
 
     @FXML private DatePicker datePicker;
@@ -78,7 +62,7 @@ public class UpdateOpeningHoursScreenController implements ClientControllerAware
         }
         if (colOccasion != null) {
             colOccasion.setCellValueFactory(new PropertyValueFactory<>("occasion"));
-            colOccasion.setCellFactory(ComboBoxTableCell.forTableColumn(OCCASION_CONVERTER, FXCollections.observableArrayList(OCCASIONS)));
+            colOccasion.setCellFactory(ComboBoxTableCell.forTableColumn(FXCollections.observableArrayList(OCCASIONS)));
             colOccasion.setOnEditCommit(event -> {
                 OpeningHoursRow row = event.getRowValue();
                 if (row != null) {
@@ -173,17 +157,13 @@ public class UpdateOpeningHoursScreenController implements ClientControllerAware
             setInfo("Open time must be before close time.");
             return;
         }
-        String occasion = row.getOccasion();
-        if (occasion == null || occasion.isBlank()) {
-            occasion = "REGULAR";
-        }
         clientController.requestManagerAction(
                 new ManagerRequest(
                         ManagerCommand.EDIT_OPENING_HOURS,
                         row.getDate(),
                         row.getOpen(),
                         row.getClose(),
-                        occasion
+                        row.getOccasion()
                 )
         );
         setInfo("Saving opening hours for " + row.getDate() + "...");

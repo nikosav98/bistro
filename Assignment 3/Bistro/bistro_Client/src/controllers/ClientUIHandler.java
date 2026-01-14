@@ -24,7 +24,5 @@ public interface ClientUIHandler {
     void onBillTotal(double baseTotal, boolean isCash);
     void onBillPaid(Integer tableNumber);
     void onBillError(String message);
-    void onUserDetailsResponse(String email, String phone);
-
 
 }

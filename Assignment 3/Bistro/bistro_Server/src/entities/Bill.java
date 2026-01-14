@@ -10,6 +10,7 @@ public class Bill {
 	private String status; // OPEN,PAID
 	private LocalDateTime createdAt;
 	private LocalDateTime paidAt;
+	
 	public Bill(int billID, int seatingID, double totalPrice, String status, LocalDateTime createdAt,LocalDateTime paidAt) {
 		this.billID = billID;
 		this.seatingID = seatingID;
