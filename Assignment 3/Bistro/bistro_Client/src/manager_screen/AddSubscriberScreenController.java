@@ -28,7 +28,7 @@ public class AddSubscriberScreenController implements ClientControllerAware {
     
     @FXML
     private void initialize() {   	
-    	 configureRoleOptions();
+    	 
     }
 
     @Override
@@ -77,6 +77,7 @@ public class AddSubscriberScreenController implements ClientControllerAware {
 
         clientController.requestManagerAction(request);
         setInfo("Submitting new subscriber...");
+        
     }
 
     @FXML
